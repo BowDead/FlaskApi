@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -12,6 +13,17 @@ DATABASE_URL = "postgresql://2024_gwozdz_bartlomiej:37685BG@195.150.230.208:5432
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Modele danych
+class ZagadkiRequest(BaseModel):
+    id_autora: int
+    kategoria: str
+    obraz: bytes = None
+    rozwiazanie: str
+
+class AutorRequest(BaseModel):
+    nazwa: str
+
+# Endpointy
 @app.get("/")
 def read_root():
     return {"message": "API działa poprawnie!"}
@@ -26,3 +38,71 @@ def test_connection():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd połączenia z bazą danych: {str(e)}")
 
+@app.get("/zagadki/{id}")
+def get_zagadki_by_id(id: int):
+    query = """
+        SELECT zagadki.id, zagadki.kategoria, zagadki.obraz, zagadki.rozwiazanie, autor.nazwa
+        FROM zagadkomat.zagadki
+        JOIN zagadkomat.autor ON zagadkomat.zagadki.id_autora = zagadkomat.autor.id_autora
+        WHERE zagadkomat.zagadki.id = :id
+    """
+    try:
+        with engine.connect() as connection:
+            result = connection.execute(text(query), {"id": id}).fetchone()
+            if result:
+                return {
+                    "id": result[0],
+                    "kategoria": result[1],
+                    "obraz": result[2],
+                    "rozwiazanie": result[3],
+                    "autor": result[4],
+                }
+            else:
+                raise HTTPException(status_code=404, detail="Nie znaleziono zagadki o podanym ID.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Błąd: {str(e)}")
+
+@app.get("/zagadki-ids")
+def get_all_zagadki_ids():
+    query = "SELECT id FROM zagadkomat.zagadki"
+    try:
+        with engine.connect() as connection:
+            result = connection.execute(text(query)).fetchall()
+            return {"ids": [row[0] for row in result]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Błąd: {str(e)}")
+
+@app.post("/zagadki")
+def add_zagadki(zagadki: ZagadkiRequest, autor: AutorRequest):
+    try:
+        with engine.connect() as connection:
+            # Sprawdź, czy autor istnieje
+            autor_query = "SELECT id_autora FROM zagadkomat.autor WHERE nazwa = :nazwa"
+            autor_result = connection.execute(text(autor_query), {"nazwa": autor.nazwa}).fetchone()
+
+            if autor_result:
+                id_autora = autor_result[0]
+            else:
+                # Dodaj nowego autora
+                new_autor_query = "INSERT INTO zagadkomat.autor (nazwa) VALUES (:nazwa) RETURNING id_autora"
+                id_autora = connection.execute(text(new_autor_query), {"nazwa": autor.nazwa}).fetchone()[0]
+
+            # Wstaw nowy rekord do zagadki
+            zagadki_query = """
+                INSERT INTO zagadkomat.zagadki (id_autora, kategoria, obraz, rozwiazanie)
+                VALUES (:id_autora, :kategoria, :obraz, :rozwiazanie)
+                RETURNING id
+            """
+            new_id = connection.execute(
+                text(zagadki_query),
+                {
+                    "id_autora": id_autora,
+                    "kategoria": zagadki.kategoria,
+                    "obraz": zagadki.obraz,
+                    "rozwiazanie": zagadki.rozwiazanie,
+                },
+            ).fetchone()[0]
+
+            return {"message": "Zagadki dodano pomyślnie.", "new_id": new_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Błąd: {str(e)}")
