@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+import logging
 
 # Inicjalizacja aplikacji FastAPI
 app = FastAPI()
@@ -41,10 +42,10 @@ def test_connection():
 @app.get("/zagadki/{id}")
 def get_zagadki_by_id(id: int):
     query = """
-        SELECT zagadki.id, zagadki.kategoria, zagadki.obraz, zagadki.rozwiazanie, autor.nazwa
-        FROM zagadkomat.zagadki
-        JOIN zagadkomat.autor ON zagadkomat.zagadki.id_autora = zagadkomat.autor.id_autora
-        WHERE zagadkomat.zagadki.id = :id
+        SELECT z.id, z.kategoria, z.obraz, z.rozwiazanie, a.nazwa
+        FROM zagadkomat.zagadki AS z
+        JOIN zagadkomat.autor AS a ON z.id_autora = a.id_autora
+        WHERE z.id = :id
     """
     try:
         with engine.connect() as connection:
@@ -60,6 +61,7 @@ def get_zagadki_by_id(id: int):
             else:
                 raise HTTPException(status_code=404, detail="Nie znaleziono zagadki o podanym ID.")
     except Exception as e:
+        logging.error(f"Błąd w get_zagadki_by_id: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Błąd: {str(e)}")
 
 @app.get("/zagadki-ids")
