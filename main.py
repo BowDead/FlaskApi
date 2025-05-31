@@ -24,6 +24,13 @@ class ZagadkiRequest(BaseModel):
 class AutorRequest(BaseModel):
     nazwa: str
 
+class ZagadkiResponse(BaseModel):
+    id: int
+    kategoria: str
+    obraz: str | None  # Jeśli obraz może być typu `None`
+    rozwiazanie: str
+    autor: str
+
 # Endpointy
 @app.get("/")
 def read_root():
@@ -39,7 +46,7 @@ def test_connection():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd połączenia z bazą danych: {str(e)}")
 
-@app.get("/zagadki/{id}")
+@app.get("/zagadki/{id}", response_model=ZagadkiResponse)
 def get_zagadki_by_id(id: int):
     query = """
         SELECT z.id, z.kategoria, z.obraz, z.rozwiazanie, a.nazwa
@@ -54,7 +61,7 @@ def get_zagadki_by_id(id: int):
                 return {
                     "id": result[0],
                     "kategoria": result[1],
-                    "obraz": result[2],
+                    "obraz": result[2].hex() if result[2] else None,  # Jeśli obraz jest typu bytes
                     "rozwiazanie": result[3],
                     "autor": result[4],
                 }
