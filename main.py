@@ -18,7 +18,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 class ZagadkiRequest(BaseModel):
     id_autora: int
     kategoria: str
-    obraz: bytes = None
+    obraz: str
     rozwiazanie: str
 
 class AutorRequest(BaseModel):
@@ -27,7 +27,7 @@ class AutorRequest(BaseModel):
 class ZagadkiResponse(BaseModel):
     id: int
     kategoria: str
-    obraz: str | None  # Jeśli obraz może być typu `None`
+    obraz: str
     rozwiazanie: str
     autor: str
 
@@ -61,7 +61,7 @@ def get_zagadki_by_id(id: int):
                 return {
                     "id": result[0],
                     "kategoria": result[1],
-                    "obraz": result[2].hex() if result[2] else None,  # Jeśli obraz jest typu bytes
+                    "obraz": result[2],
                     "rozwiazanie": result[3],
                     "autor": result[4],
                 }
