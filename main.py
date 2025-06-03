@@ -31,6 +31,10 @@ class ZagadkiResponse(BaseModel):
     rozwiazanie: str
     autor: str
 
+class ZagadkiWithAutorRequest(BaseModel):
+    zagadki: ZagadkiRequest
+    autor: AutorRequest
+
 # Endpointy
 @app.get("/")
 def read_root():
