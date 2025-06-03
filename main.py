@@ -90,20 +90,21 @@ def get_all_zagadki_ids():
 def add_zagadki(request: ZagadkiWithAutorRequest):
     zagadki = request.zagadki
     autor = request.autor
-    logging.info(f"Próba dodania zagadki: {zagadki} z autorem: {autor}")
 
     try:
         with engine.begin() as connection:
-            autor_query = "SELECT id_autora FROM zagadkomat.autor WHERE nazwa = :nazwa"
-            autor_result = connection.execute(text(autor_query), {"nazwa": autor.nazwa}).fetchone()
+            if autor is not None:
+                autor_query = "SELECT id_autora FROM zagadkomat.autor WHERE nazwa = :nazwa"
+                autor_result = connection.execute(text(autor_query), {"nazwa": autor.nazwa}).fetchone()
 
-            if autor_result:
-                id_autora = autor_result[0]
-                logging.info(f"Znaleziono istniejącego autora: {autor.nazwa} (id: {id_autora})")
+                if autor_result:
+                    id_autora = autor_result[0]
+                else:
+                    new_autor_query = "INSERT INTO zagadkomat.autor (nazwa) VALUES (:nazwa) RETURNING id_autora"
+                    id_autora = connection.execute(text(new_autor_query), {"nazwa": autor.nazwa}).fetchone()[0]
             else:
-                new_autor_query = "INSERT INTO zagadkomat.autor (nazwa) VALUES (:nazwa) RETURNING id_autora"
-                id_autora = connection.execute(text(new_autor_query), {"nazwa": autor.nazwa}).fetchone()[0]
-                logging.info(f"Dodano nowego autora: {autor.nazwa} (id: {id_autora})")
+                # Jeśli autor jest None, użyj id_autora z zagadki (zakładam, że jest poprawne)
+                id_autora = zagadki.id_autora
 
             zagadki_query = """
                 INSERT INTO zagadkomat.zagadki (id_autora, kategoria, obraz, rozwiazanie)
@@ -119,12 +120,12 @@ def add_zagadki(request: ZagadkiWithAutorRequest):
                     "rozwiazanie": zagadki.rozwiazanie,
                 },
             ).fetchone()[0]
-            logging.info(f"Dodano nową zagadkę: {new_id}")
 
         return {"message": "Zagadki dodano pomyślnie.", "new_id": new_id}
     except Exception as e:
         logging.error(f"Błąd w add_zagadki: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Błąd: {str(e)}")
+
 
 
 @app.get("/author-id")
