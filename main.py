@@ -115,3 +115,18 @@ def add_zagadki(zagadki: ZagadkiRequest, autor: AutorRequest):
             return {"message": "Zagadki dodano pomyślnie.", "new_id": new_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd: {str(e)}")
+
+@app.get("/author-id")
+def get_author_id(nazwa: str):
+    query = "SELECT id_autora FROM zagadkomat.autor WHERE nazwa = :nazwa"
+    try:
+        with engine.connect() as connection:
+            result = connection.execute(text(query), {"nazwa": nazwa}).fetchone()
+            if result:
+                return {"id_autora": result[0]}
+            else:
+                raise HTTPException(status_code=404, detail="Autor nie istnieje.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Błąd: {str(e)}")
+
+
