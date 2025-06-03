@@ -133,7 +133,7 @@ def get_author_id(nazwa: str):
         with engine.connect() as connection:
             result = connection.execute(text(query), {"nazwa": nazwa}).fetchone()
             if result:
-                return {"id_autora": result[0]}
+                return result[0]  # zwracaj samą liczbę
             else:
                 raise HTTPException(status_code=404, detail="Autor nie istnieje.")
     except Exception as e:
