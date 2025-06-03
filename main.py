@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import logging
+from typing import Optional
 
 # Inicjalizacja aplikacji FastAPI
 app = FastAPI()
@@ -33,7 +34,7 @@ class ZagadkiResponse(BaseModel):
 
 class ZagadkiWithAutorRequest(BaseModel):
     zagadki: ZagadkiRequest
-    autor: AutorRequest
+    autor: Optional[AutorRequest] = None
 
 # Endpointy
 @app.get("/")
