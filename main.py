@@ -82,9 +82,12 @@ def get_all_zagadki_ids():
         raise HTTPException(status_code=500, detail=f"Błąd: {str(e)}")
 
 @app.post("/zagadki")
-def add_zagadki(zagadki: ZagadkiRequest, autor: AutorRequest):
+def add_zagadki(request: ZagadkiWithAutorRequest):
+    zagadki = request.zagadki
+    autor = request.autor
+
     try:
-        with engine.connect() as connection:
+        with engine.begin() as connection:  # Użycie begin() automatycznie commit-uje transakcję
             # Sprawdź, czy autor istnieje
             autor_query = "SELECT id_autora FROM zagadkomat.autor WHERE nazwa = :nazwa"
             autor_result = connection.execute(text(autor_query), {"nazwa": autor.nazwa}).fetchone()
@@ -112,8 +115,9 @@ def add_zagadki(zagadki: ZagadkiRequest, autor: AutorRequest):
                 },
             ).fetchone()[0]
 
-            return {"message": "Zagadki dodano pomyślnie.", "new_id": new_id}
+        return {"message": "Zagadki dodano pomyślnie.", "new_id": new_id}
     except Exception as e:
+        logging.error(f"Błąd w add_zagadki: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Błąd: {str(e)}")
 
 @app.get("/author-id")
